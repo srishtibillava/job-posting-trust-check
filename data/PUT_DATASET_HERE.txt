@@ -1,0 +1,1 @@
+Download fake_job_postings.csv (EMSCAD) from Kaggle and place it in this folder.

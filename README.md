@@ -37,12 +37,15 @@ Without a trained model the app still works: it uses the rules and verification 
 2. Click "Load unpacked" and choose the `extension` folder.
 3. Open a job posting, select its description, click the extension, then "Use selected text" and "Check posting".
 
-## Things to decide and explain in your report
-- **Weights** in `backend/scoring.py` (ML 0.45, rules 0.35, verification 0.20) are starting values. Try others and justify your choice.
-- **Thresholds**: Green is 70 or more, Yellow is 40 to 69, Red is below 40.
-- **Company registration** is not automated, because there is no free reliable API. The tool says so in its output.
-- **EMSCAD** is English and several years old, so test the rules on recent Indian postings too.
+## Design choices
+- Score weights in `backend/scoring.py`: ML 0.45, rules 0.35, verification 0.20.
+- Thresholds: Green 70 or more, Yellow 40 to 69, Red below 40. An explicit payment demand caps the score at 30.
+- Company registration is not automated, because there is no free reliable API. The tool says so in its output.
 
-## What has and has not been tested
-- Tested: the rules, scoring, `/analyze`, `/report` and the training script, using a small synthetic dataset (not real data).
-- Not tested: training on the real EMSCAD data, WHOIS and website lookups (they need internet), and the extension inside Chrome.
+## Limitations
+- The model is trained on EMSCAD (2012 to 2014, mostly English), so it may miss newer scams. The rules and verification checks help cover this.
+- The score is a warning, not proof. Always verify a company yourself.
+- The prototype runs locally and is not hosted.
+
+## Testing
+Tested with sample Green, Yellow and Red postings through the Chrome extension and the API docs page, including the report feature.

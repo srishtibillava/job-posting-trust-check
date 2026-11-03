@@ -1,51 +1,87 @@
-# Job Posting Trust Check (prototype)
+# Job Posting Trust Check
 
-A prototype of the dual-pronged verification tool: a Chrome extension (client tier), a FastAPI backend
-(application tier) and a SQLite database of community reports (data tier).
+A Chrome extension that checks a job posting for signs of fraud and gives it a trust score from 0 to 100, with the reasons.
 
-| Report module | File |
+- **Green (70+):** low risk
+- **Yellow (40 to 69):** be careful, verify first
+- **Red (below 40):** high risk, do not pay or share documents
+
+## What it looks like
+
+**Green: a genuine posting (score 89)**
+
+![Green result](screenshots/green.png)
+
+**Yellow: moderate risk (score 44)**
+
+| Details entered | Result |
 |---|---|
-| Rule-Based Screening | `backend/rules.py` |
-| Machine Learning Classification | `backend/train_model.py` (training), `backend/app.py` (use) |
-| Verification (website, domain age) | `backend/verify.py` |
-| Trust Score and Feedback | `backend/scoring.py`, `/report` endpoint in `backend/app.py` |
-| Browser extension | `extension/` |
+| ![Yellow input](screenshots/yellow-1.png) | ![Yellow result](screenshots/yellow-2.png) |
 
-## 1. Set up
+**Red: a scam posting (score 5)**
+
+| Details entered | Result |
+|---|---|
+| ![Red input](screenshots/red-1.png) | ![Red result](screenshots/red-2.png) |
+
+**Red after more reports: the score drops to 0**
+
+If you click **Report this posting**, later checks of the same posting or company score lower.
+
+| Details entered | Result |
+|---|---|
+| ![Red after reports input](screenshots/red-reported-1.png) | ![Red after reports result](screenshots/red-reported-2.png) |
+
+## How it works
+
+You enter the company name, website, recruiter email and job description in the extension, or select the text on a page like LinkedIn. It sends them to a small Python backend running on your computer, which checks:
+
+1. **Red-flag rules:** asking for money, asking for Aadhaar/PAN/bank details, WhatsApp-only contact, "guaranteed" pay, urgency, a Gmail/Yahoo recruiter email, no company website.
+2. **Machine learning (optional):** a model trained on the EMSCAD fake job postings dataset.
+3. **Website check:** does the website open, and how old is the domain?
+4. **Reports:** you can report a fake posting, and later checks of the same posting or company score lower.
+
+## Setup
+
+You need **Python 3.10 or newer** and **Google Chrome** on a computer.
+
+1. Download this repo (Code, then Download ZIP, or `git clone`) and open the folder in a terminal.
+2. In the main project folder, install the libraries:
+   ```
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+   (On Mac/Linux use `source venv/bin/activate`.)
+3. Start the backend and **keep this window open** whenever you use the extension:
+   ```
+   cd backend
+   uvicorn app:app --reload
+   ```
+4. In Chrome, open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose the `extension` folder.
+
+The tool works without the machine learning model, using only the rules and website checks. To train the model, download `fake_job_postings.csv` from [Kaggle](https://www.kaggle.com/datasets/shivamb/real-or-fake-fake-jobposting-prediction), put it in the `data` folder, and run this from the main project folder:
+
 ```
-pip install -r requirements.txt
+python backend/train_model.py data/fake_job_postings.csv
 ```
 
-## 2. Train the model
-1. Download the EMSCAD dataset (`fake_job_postings.csv`) from Kaggle (search "Real / Fake Job Posting Prediction").
-2. Put it in the `data/` folder.
-3. Run: `python backend/train_model.py data/fake_job_postings.csv`
+Then restart the backend.
 
-It prints a confusion matrix, precision/recall/F1 and precision-recall AUC, and saves `model/model.joblib`.
-Use the "fake" row's recall and F1 in your report. Plain accuracy is misleading because only about 5% of postings are fake.
+## How to use
 
-## 3. Start the backend
-```
-cd backend
-uvicorn app:app --reload
-```
-Open http://127.0.0.1:8000/docs to try `/analyze` and `/report` in the browser.
-Without a trained model the app still works: it uses the rules and verification only.
-
-## 4. Load the extension
-1. Open `chrome://extensions` and switch on Developer mode.
-2. Click "Load unpacked" and choose the `extension` folder.
-3. Open a job posting, select its description, click the extension, then "Use selected text" and "Check posting".
-
-## Design choices
-- Score weights in `backend/scoring.py`: ML 0.45, rules 0.35, verification 0.20.
-- Thresholds: Green 70 or more, Yellow 40 to 69, Red below 40. An explicit payment demand caps the score at 30.
-- Company registration is not automated, because there is no free reliable API. The tool says so in its output.
+1. Make sure the backend is running (step 3). Keep that window open.
+2. Open a job posting and click the extension icon.
+3. Fill in the company name, website and recruiter email. Leave the website empty if the posting doesn't give one. Paste the job description, or select it on the page and click **Use selected text**.
+4. Click **Check posting**. You get a score, a colour and the reasons.
+5. If you think the posting is fake, click **Report this posting**.
+6. Click **Clear** before checking the next posting.
 
 ## Limitations
-- The model is trained on EMSCAD (2012 to 2014, mostly English), so it may miss newer scams. The rules and verification checks help cover this.
-- The score is a warning, not proof. Always verify a company yourself.
-- The prototype runs locally and is not hosted.
 
-## Testing
-Tested with sample Green, Yellow and Red postings through the Chrome extension and the API docs page, including the report feature.
+- Tested only on desktop Chrome on Windows. It does not work on phones.
+- The backend is not hosted online. It only works while you are running it on your own computer, and reports are saved only on that computer.
+- The score is a warning, not proof. Always check a company yourself before paying or sharing documents.
+- Company registration is not checked automatically. The tool reminds you to check it on the MCA portal.
+
+This is a student project for learning and demonstration.
